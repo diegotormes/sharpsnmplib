@@ -27,7 +27,6 @@
  */
 namespace Lextm.SharpSnmpLib
 {
-    using System;
     using System.Runtime.Serialization;
     
     /// <summary>

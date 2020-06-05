@@ -618,6 +618,37 @@ namespace Lextm.SharpSnmpLib.Messaging
             }
         }
 
+        //By Diego
+        public static async Task<ISnmpMessage> GetResponseAsync(this ISnmpMessage request, IPEndPoint receiver, CancellationToken cancellationToken)
+        {
+            if (request == null)
+            {
+                throw new ArgumentNullException(nameof(request));
+            }
+
+            if (receiver == null)
+            {
+                throw new ArgumentNullException(nameof(receiver));
+            }
+
+            var code = request.TypeCode();
+            if (code == SnmpType.TrapV1Pdu || code == SnmpType.TrapV2Pdu || code == SnmpType.ReportPdu)
+            {
+                throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "not a request message: {0}", code));
+            }
+
+            var tcs = new TaskCompletionSource<bool>();
+            using (var _ = cancellationToken.Register(() => tcs.SetCanceled()))
+            using (var socket = receiver.GetSocket())
+            {
+                var response = request.GetResponseAsync(receiver, socket);
+                var result = await Task.WhenAny(tcs.Task, response);
+                if (result == tcs.Task)
+                    throw new TaskCanceledException(response);
+                return await response;
+            }
+        }
+
         /// <summary>
         /// Sends this <see cref="ISnmpMessage"/> and handles the response from agent.
         /// </summary>

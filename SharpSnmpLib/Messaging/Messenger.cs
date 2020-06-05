@@ -30,6 +30,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Net;
+using System.Threading;
 using Lextm.SharpSnmpLib.Security;
 using System.Threading.Tasks;
 
@@ -121,6 +122,43 @@ namespace Lextm.SharpSnmpLib.Messaging
             return pdu.Variables;
         }
 
+        //By Diego
+        public static async Task<IList<Variable>> GetAsync(VersionCode version, IPEndPoint endpoint, OctetString community, IList<Variable> variables, CancellationToken cancellationToken)
+        {
+            if (endpoint == null)
+            {
+                throw new ArgumentNullException(nameof(endpoint));
+            }
+
+            if (community == null)
+            {
+                throw new ArgumentNullException(nameof(community));
+            }
+
+            if (variables == null)
+            {
+                throw new ArgumentNullException(nameof(variables));
+            }
+
+            if (version == VersionCode.V3)
+            {
+                throw new NotSupportedException("SNMP v3 is not supported");
+            }
+
+            var message = new GetRequestMessage(RequestCounter.NextId, version, community, variables);
+            var response = await message.GetResponseAsync(endpoint, cancellationToken).ConfigureAwait(false);
+            var pdu = response.Pdu();
+            if (pdu.ErrorStatus.ToInt32() != 0)
+            {
+                throw ErrorException.Create(
+                    "error in response",
+                    endpoint.Address,
+                    response);
+            }
+
+            return pdu.Variables;
+        }
+        
         /// <summary>
         /// Sets a list of variable binds.
         /// </summary>
